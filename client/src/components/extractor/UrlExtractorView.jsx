@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { useAnalytics } from '../../context/AnalyticsContext';
 import { exportBulkUrlsToExcel } from '../../utils/excelExporter';
+import { API_BASE } from '../../apiConfig';
 
 export default function UrlExtractorView() {
   const { darkMode, updateCustomProfile, loadUrlDataToDashboard, profileData } = useAnalytics();
@@ -119,7 +120,7 @@ export default function UrlExtractorView() {
 
     try {
       const savedRapidKey = localStorage.getItem('rapidapi_key') || '';
-      const res = await fetch('http://localhost:5000/api/extract-url', {
+      const res = await fetch(`${API_BASE}/api/extract-url`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: finalUrl, rapidApiKey: savedRapidKey })
@@ -175,7 +176,7 @@ export default function UrlExtractorView() {
 
     try {
       const savedRapidKey = localStorage.getItem('rapidapi_key') || '';
-      const res = await fetch('http://localhost:5000/api/extract-url/bulk', {
+      const res = await fetch(`${API_BASE}/api/extract-url/bulk`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ urls: validUrls, rapidApiKey: savedRapidKey })
