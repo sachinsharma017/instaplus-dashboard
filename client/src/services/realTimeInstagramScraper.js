@@ -51,7 +51,7 @@ export function parseCountNumber(str) {
 /**
  * Fast Timeout Fetch Helper
  */
-async function fetchWithTimeout(url, options = {}, timeoutMs = 2500) {
+async function fetchWithTimeout(url, options = {}, timeoutMs = 8000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -65,61 +65,9 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 2500) {
 }
 
 /**
- * Deterministic hash generator for fallback metrics when counts are hidden
- */
-function hashShortcode(shortcode) {
-  let hash = 0;
-  for (let i = 0; i < shortcode.length; i++) {
-    hash = (hash << 5) - hash + shortcode.charCodeAt(i);
-    hash |= 0;
-  }
-  return Math.abs(hash);
-}
-
-/**
- * Generate algorithmic fallback Reel metrics
- */
-function generateAlgorithmicReelFallback(shortcode, authorHandle = null) {
-  const seed = hashShortcode(shortcode);
-  const handle = authorHandle || `@creator_${shortcode.slice(0, 5).toLowerCase()}`;
-
-  const views = 150000 + (seed % 850000);
-  const likes = Math.floor(views * (0.06 + (seed % 4) * 0.015));
-  const comments = Math.floor(likes * (0.015 + (seed % 3) * 0.005));
-  const shares = Math.floor(comments * 1.5);
-  const saves = Math.floor(likes * 0.18);
-  const reach = Math.floor(views * 1.08);
-  const er = Number((((likes + comments + shares + saves) / reach) * 100).toFixed(2));
-  const followers = 50000 + (seed % 450000);
-
-  return {
-    url: `https://www.instagram.com/reel/${shortcode}/`,
-    type: 'Reel',
-    authorName: handle.replace('@', '').replace(/_/g, ' ').toUpperCase(),
-    authorHandle: handle.startsWith('@') ? handle : `@${handle}`,
-    followers,
-    likes,
-    comments,
-    views,
-    shares,
-    saves,
-    reach,
-    engagementRate: er,
-    viralityScore: er > 5 ? 94 : 83,
-    caption: `Trending Reel by ${handle} • Original Audio`,
-    hashtags: ['#viral', '#reels', '#instagram'],
-    mediaUrl: '',
-    avatar: '',
-    isRealFetched: true,
-    fetchSource: '🟢 ALGORITHMIC ENGINE',
-    timestamp: new Date().toISOString()
-  };
-}
-
-/**
  * Fetch Instagram Public Embed Page Data
  */
-export async function fetchFromInstagramEmbed(shortcode, timeoutMs = 1500) {
+export async function fetchFromInstagramEmbed(shortcode, timeoutMs = 5000) {
   const embedUrl = `https://www.instagram.com/p/${shortcode}/embed/captioned/`;
   const headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
@@ -179,7 +127,7 @@ export async function fetchFromInstagramEmbed(shortcode, timeoutMs = 1500) {
 /**
  * Direct Live GraphQL Endpoint Fetcher
  */
-export async function fetchExactReelMetricsFromGraphQL(shortcode, timeoutMs = 2500) {
+export async function fetchExactReelMetricsFromGraphQL(shortcode, timeoutMs = 8000) {
   const docId = '5013324622107469';
   const variables = JSON.stringify({ shortcode });
   const targetUrl = `https://www.instagram.com/graphql/query/?doc_id=${docId}&variables=${encodeURIComponent(variables)}`;
@@ -227,7 +175,7 @@ export async function fetchExactReelMetricsFromGraphQL(shortcode, timeoutMs = 25
   return null;
 }
 
-export async function fetchRealLiveProfile(username, timeoutMs = 2500) {
+export async function fetchRealLiveProfile(username, timeoutMs = 8000) {
   const cleanUser = username.replace('@', '').trim();
   const targetUrl = `https://www.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(cleanUser)}`;
   
@@ -256,24 +204,8 @@ export async function fetchRealLiveProfile(username, timeoutMs = 2500) {
     console.log('Direct Profile API fetch notice:', err.message);
   }
 
-  // Fallback for profile parsing
-  const seed = hashShortcode(cleanUser);
-  const followers = 120000 + (seed % 880000);
-  return {
-    authorName: cleanUser.replace(/[._]/g, ' ').toUpperCase(),
-    authorHandle: `@${cleanUser}`,
-    followers,
-    following: 450 + (seed % 500),
-    postsCount: 150 + (seed % 300),
-    avatar: '',
-    isVerified: true,
-    biography: `Official Instagram Creator Account • ${cleanUser}`,
-    likes: Math.floor(followers * 0.05),
-    comments: Math.floor(followers * 0.003),
-    views: Math.floor(followers * 0.35),
-    shares: Math.floor(followers * 0.004),
-    saves: Math.floor(followers * 0.008)
-  };
+  // Strictly NO fake fallback data
+  return null;
 }
 
 function parseInstagramUserObject(u) {
@@ -297,9 +229,9 @@ function parseInstagramUserObject(u) {
     totalViews += node.video_view_count || node.play_count || 0;
   });
 
-  const avgLikes = edges.length > 0 ? Math.round(totalLikes / edges.length) : Math.floor(followers * 0.08);
-  const avgComments = edges.length > 0 ? Math.round(totalComments / edges.length) : Math.floor(followers * 0.005);
-  const avgViews = edges.length > 0 ? Math.round(totalViews / edges.length) : Math.floor(followers * 0.4);
+  const avgLikes = edges.length > 0 ? Math.round(totalLikes / edges.length) : 0;
+  const avgComments = edges.length > 0 ? Math.round(totalComments / edges.length) : 0;
+  const avgViews = edges.length > 0 ? Math.round(totalViews / edges.length) : 0;
   const shares = Math.floor(avgComments * 1.5);
   const saves = Math.floor(avgLikes * 0.18);
 
@@ -326,7 +258,7 @@ export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch
   // 1. REEL / POST SCRAPING
   if (parsed.type === 'post' && parsed.value) {
     const shortcode = parsed.value;
-    const timeoutMs = isFastBatch ? 1200 : 2500;
+    const timeoutMs = isFastBatch ? 2000 : 8000;
     
     // Engine A: GraphQL
     let exactData = await fetchExactReelMetricsFromGraphQL(shortcode, timeoutMs);
@@ -337,10 +269,10 @@ export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch
       if (embedData) exactData = embedData;
     }
 
-    if (exactData && (exactData.exactViews > 0 || exactData.exactLikes > 0)) {
-      const likes = exactData.exactLikes;
-      const comments = exactData.exactComments;
-      const views = exactData.exactViews;
+    if (exactData && (exactData.exactViews > 0 || exactData.exactLikes > 0 || exactData.authorName)) {
+      const likes = exactData.exactLikes || 0;
+      const comments = exactData.exactComments || 0;
+      const views = exactData.exactViews || 0;
       const shares = Math.floor(comments * 1.4);
       const saves = Math.floor(likes * 0.15);
       const reach = Math.max(views, likes * 5);
@@ -369,14 +301,11 @@ export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch
         timestamp: new Date().toISOString()
       };
     }
-
-    // Engine D: Smart Algorithmic Fallback so EVERY public shortcode works!
-    return generateAlgorithmicReelFallback(shortcode, exactData?.authorHandle);
   }
 
   // 2. USERNAME PROFILE SCRAPING
   if (parsed.value && parsed.type === 'username') {
-    const liveData = await fetchRealLiveProfile(parsed.value, isFastBatch ? 1200 : 2500);
+    const liveData = await fetchRealLiveProfile(parsed.value, isFastBatch ? 2000 : 8000);
     if (liveData) {
       return {
         url,
@@ -389,13 +318,13 @@ export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch
         avatar: liveData.avatar,
         isVerified: liveData.isVerified,
         biography: liveData.biography,
-        likes: liveData.likes || Math.floor(liveData.followers * 0.05),
-        comments: liveData.comments || Math.floor(liveData.followers * 0.003),
-        views: liveData.views || Math.floor(liveData.followers * 0.35),
-        shares: liveData.shares || Math.floor(liveData.followers * 0.004),
-        saves: liveData.saves || Math.floor(liveData.followers * 0.008),
-        reach: Math.floor(liveData.followers * 0.38),
-        engagementRate: 4.52,
+        likes: liveData.likes,
+        comments: liveData.comments,
+        views: liveData.views,
+        shares: liveData.shares,
+        saves: liveData.saves,
+        reach: Math.max(liveData.views, liveData.followers),
+        engagementRate: liveData.followers > 0 ? Number((((liveData.likes + liveData.comments) / liveData.followers) * 100).toFixed(2)) : 0,
         viralityScore: 88,
         isRealFetched: true,
         fetchSource: '🟢 100% LIVE INSTAGRAM PROFILE ENGINE',
@@ -404,12 +333,13 @@ export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch
     }
   }
 
+  // Strictly NO dummy values: return clear error if profile or post cannot be fetched
   return {
     url,
     isPrivate: true,
-    error: "❌ Unable to resolve URL or Username. Please check the Instagram link and try again.",
-    authorName: "Invalid URL / Account",
-    authorHandle: "@invalid",
+    error: `🔒 Unable to fetch live data for "${parsed.value || url}". Instagram rate-limited or restricted logged-out access. Please try a Reel URL!`,
+    authorName: "Restricted / Private Account",
+    authorHandle: `@${parsed.value || 'restricted'}`,
     followers: 0,
     likes: 0,
     comments: 0,
@@ -419,8 +349,8 @@ export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch
     reach: 0,
     engagementRate: 0,
     viralityScore: 0,
-    caption: "Invalid URL",
+    caption: "Restricted Access",
     isRealFetched: false,
-    fetchSource: "❌ Invalid URL"
+    fetchSource: "⚠️ Restricted or Rate-Limited"
   };
 }
