@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
 import {
   Swords, Plus, Trash2, Loader2, Link2, Users,
   Heart, MessageCircle, Eye, TrendingUp, CheckCircle2, AlertCircle, X
 } from 'lucide-react';
+import { API_BASE } from '../../apiConfig';
 
 function fmt(num) {
   if (!num || isNaN(num)) return '0';
@@ -33,7 +33,7 @@ export default function CompetitorTable() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch('http://localhost:5000/api/extract-url/single', {
+      const res = await fetch(`${API_BASE}/api/extract-url/single`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url })
@@ -141,7 +141,7 @@ export default function CompetitorTable() {
                 <div className="flex items-center gap-3 pr-8">
                   {c.avatar ? (
                     <img
-                      src={`http://localhost:5000/api/proxy-image?url=${encodeURIComponent(c.avatar)}`}
+                      src={`${API_BASE}/api/proxy-image?url=${encodeURIComponent(c.avatar)}`}
                       onError={e => { e.target.style.display='none'; }}
                       className="w-10 h-10 rounded-full object-cover ring-2 ring-pink-500/30 shrink-0"
                       alt={c.authorName}

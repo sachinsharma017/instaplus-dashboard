@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Sparkles, Send, Bot, User, CornerDownLeft, RefreshCw } from 'lucide-react';
+import { Sparkles, Send, Bot, User, CornerDownLeft, RefreshCw, MessageSquare } from 'lucide-react';
 import { useAnalytics } from '../../context/AnalyticsContext';
+import { API_BASE } from '../../apiConfig';
 
 export default function AssistantChat() {
   const { profileData, metrics, period, highlights } = useAnalytics();
@@ -39,7 +40,7 @@ export default function AssistantChat() {
 
     try {
       // Fetch response from server AI endpoint or local dataset engine
-      const res = await fetch('http://localhost:5000/api/ai/chat', {
+      const res = await fetch(`${API_BASE}/api/ai/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
