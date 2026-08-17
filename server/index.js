@@ -16,6 +16,11 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// Health check / status route
+app.get('/', (req, res) => {
+  res.json({ status: 'online', service: 'InstaPlus Analytics API', time: new Date().toISOString() });
+});
+
 // API Routes
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/content', contentRoutes);
