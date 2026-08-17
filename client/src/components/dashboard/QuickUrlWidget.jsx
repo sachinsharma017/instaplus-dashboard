@@ -31,6 +31,7 @@ export default function QuickUrlWidget() {
   // Widget mode: 'single' | 'bulk'
   const [widgetMode, setWidgetMode] = useState('single');
   const [loading, setLoading] = useState(false);
+  const [widgetError, setWidgetError] = useState('');
 
   // Bulk State (Up to 100 URLs)
   const [bulkInput, setBulkInput] = useState('');
@@ -52,6 +53,7 @@ export default function QuickUrlWidget() {
 
     setLoading(true);
     setLastQuickResult(null);
+    setWidgetError('');
 
     try {
       const savedRapidKey = localStorage.getItem('rapidapi_key') || '';
@@ -62,13 +64,20 @@ export default function QuickUrlWidget() {
       });
       const json = await res.json();
       if (json.data) {
-        setLastQuickResult(json.data);
-        loadUrlDataToDashboard(json.data);
+        if (json.data.isPrivate) {
+          setWidgetError(json.data.error || '🔒 Yeh Reel Private ya Age-Restricted hai. Kripya koi PUBLIC Reel link use karein!');
+        } else {
+          setLastQuickResult(json.data);
+          loadUrlDataToDashboard(json.data);
+        }
         setLoading(false);
         return;
+      } else if (json.error) {
+        setWidgetError(json.error);
       }
     } catch (err) {
       console.log('API fetch notice:', err.message);
+      setWidgetError('Unable to connect to backend server.');
     }
 
     setLoading(false);
@@ -211,6 +220,13 @@ export default function QuickUrlWidget() {
             )}
           </button>
         </form>
+      )}
+
+      {widgetError && (
+        <div className="mt-3 flex items-center gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-bold font-sans animate-fadeIn">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <span>{widgetError}</span>
+        </div>
       )}
 
       {/* MODE 2: BULK 100 URLs INPUT */}
