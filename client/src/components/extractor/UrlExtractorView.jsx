@@ -138,14 +138,8 @@ export default function UrlExtractorView() {
       setEditAuthor(json.data.authorHandle);
       loadUrlDataToDashboard(json.data);
     } catch (err) {
-      console.warn('Backend fetch fallback active:', err.message);
-      const simulated = generateSimulatedPost(finalUrl);
-      setExtractedData(simulated);
-      setEditViews(simulated.views);
-      setEditLikes(simulated.likes);
-      setEditComments(simulated.comments);
-      setEditAuthor(simulated.authorHandle);
-      loadUrlDataToDashboard(simulated);
+      console.error('Backend fetch error:', err.message);
+      setError(err.message || 'Failed to extract Instagram data.');
     } finally {
       setLoading(false);
     }
@@ -186,12 +180,10 @@ export default function UrlExtractorView() {
         setBulkProgress(100);
         setBulkResults(json.data);
       } else {
-        const fallbacks = validUrls.map((u, i) => generateSimulatedPost(u, i));
-        setBulkResults(fallbacks);
+        setError(json.error || 'Failed to extract bulk URLs.');
       }
     } catch (err) {
-      const fallbacks = validUrls.map((u, i) => generateSimulatedPost(u, i));
-      setBulkResults(fallbacks);
+      setError(err.message || 'Network error extracting bulk URLs.');
     } finally {
       setBulkProgress(100);
       setBulkLoading(false);
