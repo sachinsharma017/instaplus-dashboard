@@ -81,7 +81,7 @@ export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch
       console.log('Using RapidAPI for extraction...');
       if (parsed.type === 'post') {
         const shortcode = parsed.value;
-        const res = await fetch(`https://instagram-public-bulk-scraper.p.rapidapi.com/v1/post/info?code_or_id_or_url=https://www.instagram.com/p/${shortcode}/`, {
+        const res = await fetch(`https://instagram-public-bulk-scraper.p.rapidapi.com/v1/media_info?code_or_id_or_url=https://www.instagram.com/p/${shortcode}/`, {
           headers: {
             'x-rapidapi-key': apiKey.trim(),
             'x-rapidapi-host': 'instagram-public-bulk-scraper.p.rapidapi.com'
@@ -105,7 +105,7 @@ export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch
 
         if (username && !followers) {
           try {
-            const userRes = await fetch(`https://instagram-public-bulk-scraper.p.rapidapi.com/v1/user/info?username_or_id_or_url=${username}`, {
+            const userRes = await fetch(`https://instagram-public-bulk-scraper.p.rapidapi.com/v1/user_info?username_or_id=${username}`, {
               headers: {
                 'x-rapidapi-key': apiKey.trim(),
                 'x-rapidapi-host': 'instagram-public-bulk-scraper.p.rapidapi.com'
@@ -155,7 +155,7 @@ export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch
         };
       } else if (parsed.type === 'username') {
         const username = parsed.value;
-        const res = await fetch(`https://instagram-public-bulk-scraper.p.rapidapi.com/v1/user/info?username_or_id_or_url=${username}`, {
+        const res = await fetch(`https://instagram-public-bulk-scraper.p.rapidapi.com/v1/user_info?username_or_id=${username}`, {
           headers: {
             'x-rapidapi-key': apiKey.trim(),
             'x-rapidapi-host': 'instagram-public-bulk-scraper.p.rapidapi.com'
