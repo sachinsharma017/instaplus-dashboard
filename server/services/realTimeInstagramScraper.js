@@ -89,7 +89,7 @@ export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch
         });
         const json = await res.json();
         const postData = json.data || {};
-        const author = postData.owner || {};
+        const author = postData.user || postData.owner || {};
         const likes = postData.like_count || postData.edge_media_preview_like?.count || 0;
         const comments = postData.comment_count || postData.edge_media_to_parent_comment?.count || 0;
         const views = postData.play_count || postData.video_view_count || 0;
