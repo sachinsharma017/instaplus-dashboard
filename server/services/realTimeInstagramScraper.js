@@ -94,6 +94,17 @@ export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch
     const page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
 
+    // Optimize performance: block heavy images, fonts, and media to save RAM/CPU
+    await page.setRequestInterception(true);
+    page.on('request', (req) => {
+      const type = req.resourceType();
+      if (['image', 'font', 'media'].includes(type)) {
+        req.abort();
+      } else {
+        req.continue();
+      }
+    });
+
     // Inject session cookie if provided by user
     const cookieVal = sessionId || process.env.INSTAGRAM_SESSION_ID || '';
     if (cookieVal && cookieVal.trim()) {
@@ -115,7 +126,7 @@ export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch
       const targetReelUrl = `https://www.instagram.com/reel/${shortcode}/`;
 
       // 1. Visit the Reel page live
-      await page.goto(targetReelUrl, { waitUntil: 'networkidle2', timeout: 20000 }).catch(() => {});
+      await page.goto(targetReelUrl, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
 
       const reelPageInfo = await page.evaluate(() => {
         const title = document.title || '';
@@ -156,8 +167,8 @@ export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch
 
       if (rawHandle) {
         try {
-          // Visit creator profile
-          await page.goto(`https://www.instagram.com/${rawHandle}/`, { waitUntil: 'networkidle2', timeout: 15000 }).catch(() => {});
+          // 2. Go directly to Creator's Reels Grid (contains both profile metadata and reels grid)
+          await page.goto(`https://www.instagram.com/${rawHandle}/reels/`, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
 
           const profileLiveInfo = await page.evaluate(() => {
             const desc = document.querySelector('meta[name="description"]')?.content ||
@@ -180,9 +191,7 @@ export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch
             }
           }
 
-          // Also check reels grid for exact play count badge (with auto-scroll for older reels)
-          await page.goto(`https://www.instagram.com/${rawHandle}/reels/`, { waitUntil: 'networkidle2', timeout: 15000 }).catch(() => {});
-          
+          // Search reels grid for exact play count badge (with auto-scroll for older reels)
           let gridViewStr = await page.evaluate((code) => {
             const el = Array.from(document.querySelectorAll('a')).find(a => a.href.includes(code));
             return el ? el.innerText.trim() : null;
@@ -192,7 +201,7 @@ export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch
           if (!gridViewStr) {
             for (let i = 0; i < 4; i++) {
               await page.evaluate(() => window.scrollBy(0, 1600));
-              await new Promise(r => setTimeout(r, 800));
+              await new Promise(r => setTimeout(r, 600));
               gridViewStr = await page.evaluate((code) => {
                 const el = Array.from(document.querySelectorAll('a')).find(a => a.href.includes(code));
                 return el ? el.innerText.trim() : null;
@@ -251,7 +260,7 @@ export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch
     const targetUsername = parsed.value;
     const targetProfileUrl = `https://www.instagram.com/${targetUsername}/`;
 
-    await page.goto(targetProfileUrl, { waitUntil: 'networkidle2', timeout: 20000 }).catch(() => {});
+    await page.goto(targetProfileUrl, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
 
     const profileData = await page.evaluate(() => {
       const title = document.title || '';
