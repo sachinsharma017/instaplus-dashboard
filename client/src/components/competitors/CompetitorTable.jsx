@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import {
   Swords, Plus, Trash2, Loader2, Link2, Users,
   Heart, MessageCircle, Eye, TrendingUp, CheckCircle2, AlertCircle, X
@@ -33,20 +34,20 @@ export default function CompetitorTable() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${API_BASE}/api/extract-url/single`, {
+      const res = await fetch(`${API_BASE}/api/extract-url`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url })
       });
-      const data = await res.json();
+      const resData = await res.json();
 
-      if (data.error || data.isPrivate) {
-        setError(data.error || '🔒 Private ya restricted account/post hai.');
+      if (!resData.success || resData.error || (resData.data && resData.data.isPrivate)) {
+        setError(resData.error || '🔒 Private ya restricted account/post hai.');
         setLoading(false);
         return;
       }
 
-      setCompetitors(prev => [...prev, { ...data, url }]);
+      setCompetitors(prev => [...prev, { ...resData.data, url }]);
       setUrlInput('');
     } catch (err) {
       setError('Server se connect nahi ho pa raha. Backend chal raha hai?');
