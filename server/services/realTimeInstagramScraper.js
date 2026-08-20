@@ -75,10 +75,6 @@ export function parseCountNumber(str) {
 export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch = false, sessionId = '') {
   const parsed = extractUsernameOrShortcode(url);
 
-  if (!detectedChromePath) {
-    throw new Error('Google Chrome executable not found on system.');
-  }
-
   let browser;
   try {
     const launchOptions = {
