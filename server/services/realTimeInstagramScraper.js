@@ -121,7 +121,68 @@ export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch
           }
         }
 
-        const finalViews = views > 0 ? views : (likes > 0 ? Math.max(likes * 5.8, likes + 1000) : 1000);
+        // --- NEW PLAY COUNT FALLBACK USING OPTIMIZED HEADLESS BROWSER ---
+        // If play count is missing (null/0) from RapidAPI, fetch the exact play count from the reels grid!
+        let exactViews = views;
+        if ((exactViews === 0 || exactViews === null || exactViews === undefined) && username) {
+          try {
+            console.log('Views count missing in API, launching optimized headless Chrome to find exact count on grid...');
+            const launchOptions = {
+              headless: 'new',
+              args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-blink-features=AutomationControlled',
+                '--window-size=1280,800'
+              ]
+            };
+            if (detectedChromePath) {
+              launchOptions.executablePath = detectedChromePath;
+            }
+            const pBrowser = await puppeteer.launch(launchOptions);
+            const pPage = await pBrowser.newPage();
+            await pPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
+            
+            // Speed up load by blocking images, fonts, media
+            await pPage.setRequestInterception(true);
+            pPage.on('request', (req) => {
+              if (['image', 'font', 'media'].includes(req.resourceType())) {
+                req.abort();
+              } else {
+                req.continue();
+              }
+            });
+
+            await pPage.goto(`https://www.instagram.com/${username}/reels/`, { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
+            
+            let gridViewStr = await pPage.evaluate((code) => {
+              const el = Array.from(document.querySelectorAll('a')).find(a => a.href.includes(code));
+              return el ? el.innerText.trim() : null;
+            }, shortcode);
+
+            // Scroll if needed (for older reels)
+            if (!gridViewStr) {
+              for (let i = 0; i < 4; i++) {
+                await pPage.evaluate(() => window.scrollBy(0, 1600));
+                await new Promise(r => setTimeout(r, 600));
+                gridViewStr = await pPage.evaluate((code) => {
+                  const el = Array.from(document.querySelectorAll('a')).find(a => a.href.includes(code));
+                  return el ? el.innerText.trim() : null;
+                }, shortcode);
+                if (gridViewStr) break;
+              }
+            }
+
+            if (gridViewStr) {
+              exactViews = parseCountNumber(gridViewStr);
+            }
+            await pBrowser.close();
+          } catch (pbErr) {
+            console.log('Headless Chrome view count fallback note:', pbErr.message);
+          }
+        }
+
+        const finalViews = exactViews > 0 ? exactViews : (likes > 0 ? Math.max(likes * 5.8, likes + 1000) : 1000);
         const reach = Math.max(finalViews, likes * 4.2);
         const shares = Math.max(1, Math.floor(comments * 1.8));
         const saves = Math.max(1, Math.floor(likes * 0.15));
@@ -150,7 +211,7 @@ export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch
           thumbnail: mediaUrl || avatar,
           mediaUrl: mediaUrl || avatar,
           isRealFetched: true,
-          fetchSource: '⚡ RAPIDAPI CLOUD SCRAPER (LIGHTNING-FAST)',
+          fetchSource: exactViews > 0 ? '⚡ RAPIDAPI + 🟢 EXACT REELS GRID ENGINE' : '⚡ RAPIDAPI CLOUD SCRAPER (LIGHTNING-FAST)',
           timestamp: new Date().toISOString()
         };
       } else if (parsed.type === 'username') {
