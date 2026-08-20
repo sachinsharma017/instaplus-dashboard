@@ -155,6 +155,20 @@ export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch
 
             await pPage.goto(`https://www.instagram.com/${username}/reels/`, { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
             
+            // Wait for overlays to appear and remove them
+            await new Promise(r => setTimeout(r, 3000));
+            await pPage.evaluate(() => {
+              const svgs = Array.from(document.querySelectorAll('svg'));
+              const closeBtn = svgs.find(svg => svg.getAttribute('aria-label') === 'Close' || svg.innerHTML.includes('Close') || svg.textContent.includes('Close'));
+              if (closeBtn) {
+                const parentBtn = closeBtn.closest('[role="button"]') || closeBtn.parentElement;
+                if (parentBtn) parentBtn.click();
+              }
+              document.querySelectorAll('[role="dialog"]').forEach(el => el.remove());
+              document.documentElement.style.overflow = 'unset';
+              document.body.style.overflow = 'unset';
+            });
+
             let gridViewStr = await pPage.evaluate((code) => {
               const el = Array.from(document.querySelectorAll('a')).find(a => a.href.includes(code));
               return el ? el.innerText.trim() : null;
@@ -162,9 +176,9 @@ export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch
 
             // Scroll if needed (for older reels)
             if (!gridViewStr) {
-              for (let i = 0; i < 4; i++) {
+              for (let i = 0; i < 6; i++) {
                 await pPage.evaluate(() => window.scrollBy(0, 1600));
-                await new Promise(r => setTimeout(r, 600));
+                await new Promise(r => setTimeout(r, 1200));
                 gridViewStr = await pPage.evaluate((code) => {
                   const el = Array.from(document.querySelectorAll('a')).find(a => a.href.includes(code));
                   return el ? el.innerText.trim() : null;
