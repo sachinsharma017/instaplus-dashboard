@@ -3,7 +3,7 @@
  * Every single request opens live Google Chrome headlessly and scrapes exact live numbers from Instagram.
  */
 
-import puppeteer from 'puppeteer-core';
+import puppeteer from 'puppeteer';
 import fs from 'fs';
 
 const chromePaths = [
@@ -15,11 +15,13 @@ const chromePaths = [
   process.env.LOCALAPPDATA + '\\Microsoft\\Edge\\Application\\msedge.exe'
 ];
 
-let detectedChromePath = null;
-for (const p of chromePaths) {
-  if (p && fs.existsSync(p)) {
-    detectedChromePath = p;
-    break;
+let detectedChromePath = process.env.PUPPETEER_EXECUTABLE_PATH || null;
+if (!detectedChromePath) {
+  for (const p of chromePaths) {
+    if (p && fs.existsSync(p)) {
+      detectedChromePath = p;
+      break;
+    }
   }
 }
 
@@ -79,8 +81,7 @@ export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch
 
   let browser;
   try {
-    browser = await puppeteer.launch({
-      executablePath: detectedChromePath,
+    const launchOptions = {
       headless: 'new',
       args: [
         '--no-sandbox',
@@ -88,7 +89,11 @@ export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch
         '--disable-blink-features=AutomationControlled',
         '--window-size=1280,800'
       ]
-    });
+    };
+    if (detectedChromePath) {
+      launchOptions.executablePath = detectedChromePath;
+    }
+    browser = await puppeteer.launch(launchOptions);
 
     const page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
