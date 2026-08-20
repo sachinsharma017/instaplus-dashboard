@@ -120,10 +120,11 @@ export default function UrlExtractorView() {
 
     try {
       const savedRapidKey = localStorage.getItem('rapidapi_key') || '';
+      const savedSessionId = localStorage.getItem('ig_session_id') || '';
       const res = await fetch(`${API_BASE}/api/extract-url`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: finalUrl, rapidApiKey: savedRapidKey })
+        body: JSON.stringify({ url: finalUrl, rapidApiKey: savedRapidKey, sessionId: savedSessionId })
       });
 
       const json = await res.json();
@@ -131,12 +132,21 @@ export default function UrlExtractorView() {
         throw new Error(json.error || 'Failed to parse Instagram URL');
       }
 
-      setExtractedData(json.data);
-      setEditViews(json.data.views);
-      setEditLikes(json.data.likes);
-      setEditComments(json.data.comments);
-      setEditAuthor(json.data.authorHandle);
-      loadUrlDataToDashboard(json.data);
+      const data = json.data || json;
+
+      // ❌ Agar data mein error/private hai to dashboard update mat karo
+      if (data.isPrivate || data.error || !data.isRealFetched) {
+        setExtractedData(data);
+        setError(data.error || '🔒 Could not fetch real data for this URL. Try a profile URL instead.');
+        return;
+      }
+
+      setExtractedData(data);
+      setEditViews(data.views || 0);
+      setEditLikes(data.likes || 0);
+      setEditComments(data.comments || 0);
+      setEditAuthor(data.authorHandle || '');
+      loadUrlDataToDashboard(data);
     } catch (err) {
       console.error('Backend fetch error:', err.message);
       setError(err.message || 'Failed to extract Instagram data.');
@@ -368,11 +378,35 @@ export default function UrlExtractorView() {
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{error}</span>
+        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 space-y-2">
+          <div className="flex items-center gap-2 text-rose-400 text-xs font-semibold">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+          {(error.includes('rate-limited') || error.includes('wait a few minutes')) && (
+            <div className="mt-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs space-y-1">
+              <p className="text-amber-400 font-bold">⏳ Instagram Rate-Limit Cooldown Active</p>
+              <p className="text-slate-300">Instagram ne continuous requests ki wajah se IP ko 1-2 minutes ke temporary cooldown pe daala hai. 2 minute baad search karein ya direct profile details customize karein.</p>
+            </div>
+          )}
+          {(error.includes('Reel') || error.includes('blocked') || error.includes('restricted')) && (
+            <div className="mt-2 p-3 rounded-lg bg-slate-800 border border-slate-700 text-xs space-y-1">
+              <p className="text-yellow-400 font-bold">💡 Solution: Profile URL use karo!</p>
+              <p className="text-slate-300">Instagram ne Reel metrics ko publicly block kar diya hai. <span className="text-green-400 font-semibold">Profile URL</span> se 100% real data milta hai:</p>
+              <div className="flex flex-wrap gap-2 mt-1">
+                <button
+                  onClick={() => { setUrlInput('https://www.instagram.com/_yati_shekhawat_/'); setError(''); }}
+                  className="px-3 py-1 rounded-lg bg-green-500/20 border border-green-500/40 text-green-400 font-mono text-[10px] hover:bg-green-500/30 transition"
+                >
+                  instagram.com/USERNAME/ ✓
+                </button>
+                <span className="text-slate-500 text-[10px] self-center">← Iss format mein daalo</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
+
 
       {/* MODE 1: SINGLE URL EXTRACTOR */}
       {extractMode === 'single' && (

@@ -41,6 +41,26 @@ export default function QuickUrlWidget() {
   const [bulkTotalCount, setBulkTotalCount] = useState(0);
   const [bulkResults, setBulkResults] = useState([]);
 
+  // Inline Quick Views Editing
+  const [editingViews, setEditingViews] = useState(false);
+  const [customViewsInput, setCustomViewsInput] = useState('');
+
+  const handleUpdateViews = () => {
+    if (!lastQuickResult) return;
+    const v = parseInt(customViewsInput.replace(/,/g, ''), 10) || 0;
+    if (v > 0) {
+      const updated = {
+        ...lastQuickResult,
+        views: v,
+        reach: Math.max(v, lastQuickResult.followers || v),
+        engagementRate: Number((((lastQuickResult.likes + lastQuickResult.comments + (lastQuickResult.shares || 0) + (lastQuickResult.saves || 0)) / Math.max(v, 100)) * 100).toFixed(2))
+      };
+      setLastQuickResult(updated);
+      loadUrlDataToDashboard(updated);
+      setEditingViews(false);
+    }
+  };
+
   // Single Extract Handler
   const handleQuickExtract = async (e) => {
     if (e) e.preventDefault();
@@ -57,15 +77,16 @@ export default function QuickUrlWidget() {
 
     try {
       const savedRapidKey = localStorage.getItem('rapidapi_key') || '';
+      const savedSessionId = localStorage.getItem('ig_session_id') || '';
       const res = await fetch(`${API_BASE}/api/extract-url`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: inputStr, rapidApiKey: savedRapidKey })
+        body: JSON.stringify({ url: inputStr, rapidApiKey: savedRapidKey, sessionId: savedSessionId })
       });
       const json = await res.json();
       if (json.data) {
-        if (json.data.isPrivate) {
-          setWidgetError(json.data.error || '🔒 Yeh Reel Private ya Age-Restricted hai. Kripya koi PUBLIC Reel link use karein!');
+        if (json.data.isPrivate || json.data.error || !json.data.isRealFetched) {
+          setWidgetError(json.data.error || '🔒 Could not fetch live data for this URL. Please verify the URL or try a profile URL.');
         } else {
           setLastQuickResult(json.data);
           loadUrlDataToDashboard(json.data);
@@ -385,19 +406,22 @@ export default function QuickUrlWidget() {
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono bg-slate-50 dark:bg-slate-950/80 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
             <div>
-              <span className="text-slate-500 dark:text-slate-400 text-[10px] block font-medium">Followers:</span>
+              <span className="text-slate-500 dark:text-slate-400 text-[10px] block font-medium">Follower Base:</span>
               <span className="text-slate-900 dark:text-slate-100 font-bold">{(lastQuickResult.followers || 0).toLocaleString()}</span>
             </div>
             <div>
-              <span className="text-cyan-600 dark:text-cyan-400 text-[10px] font-bold block">Reel Views (Exact):</span>
+              <span className="text-cyan-600 dark:text-cyan-400 text-[10px] font-bold block flex items-center gap-1">
+                <span>Algorithmic Plays:</span>
+                <span className="text-[9px] px-1 rounded bg-cyan-500/20 text-cyan-300 font-sans font-semibold">AI Model</span>
+              </span>
               <span className="text-cyan-600 dark:text-cyan-400 font-bold text-sm block">{(lastQuickResult.views || 0).toLocaleString()}</span>
             </div>
             <div>
-              <span className="text-rose-600 dark:text-rose-400 text-[10px] font-bold block">Reel Likes (Exact):</span>
+              <span className="text-rose-600 dark:text-rose-400 text-[10px] font-bold block">Reel Likes (Live):</span>
               <span className="text-rose-600 dark:text-rose-400 font-bold text-sm">{(lastQuickResult.likes || 0).toLocaleString()}</span>
             </div>
             <div>
-              <span className="text-purple-600 dark:text-purple-400 text-[10px] font-bold block">Reel Comments (Exact):</span>
+              <span className="text-purple-600 dark:text-purple-400 text-[10px] font-bold block">Reel Comments (Live):</span>
               <span className="text-purple-600 dark:text-purple-400 font-bold text-sm">{(lastQuickResult.comments || 0).toLocaleString()}</span>
             </div>
           </div>

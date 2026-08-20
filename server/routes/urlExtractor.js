@@ -9,13 +9,13 @@ const router = express.Router();
  */
 router.post('/', async (req, res) => {
   try {
-    const { url, rapidApiKey } = req.body;
+    const { url, rapidApiKey, sessionId } = req.body;
 
     if (!url || typeof url !== 'string' || !url.trim()) {
       return res.status(400).json({ error: 'Please provide a valid Instagram URL.' });
     }
 
-    const data = await fetchLiveInstagramData(url, rapidApiKey || '', false);
+    const data = await fetchLiveInstagramData(url, rapidApiKey || '', false, sessionId || '');
     res.json({ success: true, data });
   } catch (err) {
     console.error('Error in URL extraction endpoint:', err);

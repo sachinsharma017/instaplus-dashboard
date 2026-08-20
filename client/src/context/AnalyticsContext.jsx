@@ -169,10 +169,17 @@ export const AnalyticsProvider = ({ children }) => {
 
   // Load scraped URL data to Dashboard & all analytics views dynamically
   const loadUrlDataToDashboard = (data) => {
+    // ❌ Fake/errored/private data se dashboard update nahi karenge
     if (!data) return;
+    if (data.isPrivate) return;
+    if (data.error && !data.isRealFetched) return;
+    if (!data.isRealFetched) return;
+    // Sanity check: followers should be reasonable (< 500 million)
+    if (data.followers && data.followers > 500000000) return;
 
     if (data.url) setExtractedUrl(data.url);
     setLastQuickResult(data);
+
 
     if (data.authorName || data.authorHandle) {
       setProfileData(prev => ({
