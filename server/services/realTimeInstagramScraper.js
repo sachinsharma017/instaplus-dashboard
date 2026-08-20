@@ -121,78 +121,50 @@ export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch
           }
         }
 
-        // --- NEW PLAY COUNT FALLBACK USING OPTIMIZED HEADLESS BROWSER ---
-        // If play count is missing (null/0) from RapidAPI, fetch the exact play count from the reels grid!
+        // --- NEW PLAY COUNT FALLBACK USING API LOOP PAGINATION ---
+        // If play count is missing (null/0) from RapidAPI, fetch the exact play count by paginating user_reels!
         let exactViews = views;
         if ((exactViews === 0 || exactViews === null || exactViews === undefined) && username) {
           try {
-            console.log('Views count missing in API, launching optimized headless Chrome to find exact count on grid...');
-            const launchOptions = {
-              headless: 'new',
-              args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-blink-features=AutomationControlled',
-                '--window-size=1280,800'
-              ]
-            };
-            if (detectedChromePath) {
-              launchOptions.executablePath = detectedChromePath;
-            }
-            const pBrowser = await puppeteer.launch(launchOptions);
-            const pPage = await pBrowser.newPage();
-            await pPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
+            console.log('Views count missing in API, paginating user_reels to find exact views...');
+            let maxId = '';
+            let found = false;
+            let pageNum = 1;
             
-            // Speed up load by blocking images, fonts, media
-            await pPage.setRequestInterception(true);
-            pPage.on('request', (req) => {
-              if (['image', 'font', 'media'].includes(req.resourceType())) {
-                req.abort();
+            while (pageNum <= 8) {
+              let reelsUrl = `https://instagram-public-bulk-scraper.p.rapidapi.com/v1/user_reels?username_or_id=${username}`;
+              if (maxId) {
+                reelsUrl += `&max_id=${encodeURIComponent(maxId)}`;
+              }
+              
+              const reelsRes = await fetch(reelsUrl, {
+                headers: {
+                  'x-rapidapi-key': apiKey.trim(),
+                  'x-rapidapi-host': 'instagram-public-bulk-scraper.p.rapidapi.com'
+                }
+              });
+              const reelsJson = await reelsRes.json();
+              if (reelsJson.status !== 'ok') break;
+              
+              const items = reelsJson.data?.items || [];
+              const match = items.find(item => item.media?.code === shortcode);
+              if (match) {
+                exactViews = match.media?.play_count || match.media?.view_count || 0;
+                found = true;
+                console.log(`Found exact views count in API pagination on page ${pageNum}:`, exactViews);
+                break;
+              }
+              
+              const paging = reelsJson.data?.paging_info || {};
+              if (paging.more_available && paging.max_id) {
+                maxId = paging.max_id;
+                pageNum++;
               } else {
-                req.continue();
-              }
-            });
-
-            await pPage.goto(`https://www.instagram.com/${username}/reels/`, { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
-            
-            // Wait for overlays to appear and remove them
-            await new Promise(r => setTimeout(r, 3000));
-            await pPage.evaluate(() => {
-              const svgs = Array.from(document.querySelectorAll('svg'));
-              const closeBtn = svgs.find(svg => svg.getAttribute('aria-label') === 'Close' || svg.innerHTML.includes('Close') || svg.textContent.includes('Close'));
-              if (closeBtn) {
-                const parentBtn = closeBtn.closest('[role="button"]') || closeBtn.parentElement;
-                if (parentBtn) parentBtn.click();
-              }
-              document.querySelectorAll('[role="dialog"]').forEach(el => el.remove());
-              document.documentElement.style.overflow = 'unset';
-              document.body.style.overflow = 'unset';
-            });
-
-            let gridViewStr = await pPage.evaluate((code) => {
-              const el = Array.from(document.querySelectorAll('a')).find(a => a.href.includes(code));
-              return el ? el.innerText.trim() : null;
-            }, shortcode);
-
-            // Scroll if needed (for older reels)
-            if (!gridViewStr) {
-              for (let i = 0; i < 6; i++) {
-                await pPage.evaluate(() => window.scrollBy(0, 1600));
-                await new Promise(r => setTimeout(r, 1200));
-                gridViewStr = await pPage.evaluate((code) => {
-                  const el = Array.from(document.querySelectorAll('a')).find(a => a.href.includes(code));
-                  return el ? el.innerText.trim() : null;
-                }, shortcode);
-                if (gridViewStr) break;
+                break;
               }
             }
-
-            if (gridViewStr) {
-              exactViews = parseCountNumber(gridViewStr);
-            }
-            await pBrowser.close();
-          } catch (pbErr) {
-            console.log('Headless Chrome view count fallback note:', pbErr.message);
+          } catch (apiErr) {
+            console.log('API user_reels loop fallback note:', apiErr.message);
           }
         }
 
@@ -225,7 +197,7 @@ export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch
           thumbnail: mediaUrl || avatar,
           mediaUrl: mediaUrl || avatar,
           isRealFetched: true,
-          fetchSource: exactViews > 0 ? '⚡ RAPIDAPI + 🟢 EXACT REELS GRID ENGINE' : '⚡ RAPIDAPI CLOUD SCRAPER (LIGHTNING-FAST)',
+          fetchSource: exactViews > 0 ? '⚡ RAPIDAPI + 🟢 EXACT REELS API ENGINE' : '⚡ RAPIDAPI CLOUD SCRAPER (LIGHTNING-FAST)',
           timestamp: new Date().toISOString()
         };
       } else if (parsed.type === 'username') {

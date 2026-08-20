@@ -61,9 +61,9 @@ export const AnalyticsProvider = ({ children }) => {
       // Posts processing
       let posts = [...(currentProfile.posts || [])];
       
-      const bestReel = posts.filter(p => p.type === 'Reel').sort((a, b) => b.score - a.score)[0] || posts[0];
-      const bestPost = posts.filter(p => p.type === 'Image').sort((a, b) => b.score - a.score)[0] || posts[0];
-      const bestCarousel = posts.filter(p => p.type === 'Carousel').sort((a, b) => b.score - a.score)[0] || posts[0];
+      const bestReel = posts.filter(p => p.type === 'Reel').sort((a, b) => b.score - a.score)[0] || null;
+      const bestPost = posts.filter(p => p.type === 'Image').sort((a, b) => b.score - a.score)[0] || null;
+      const bestCarousel = posts.filter(p => p.type === 'Carousel').sort((a, b) => b.score - a.score)[0] || null;
       
       setPostsData(posts);
       setHighlights({

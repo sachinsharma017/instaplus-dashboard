@@ -3,7 +3,16 @@ import { Flame, Eye, Heart, Bookmark, Share2 } from 'lucide-react';
 import { getProxiedImageUrl } from '../../utils/imageProxy';
 
 export default function HighlightCard({ title, badge, post, type = 'reel' }) {
-  if (!post) return null;
+  if (!post) {
+    return (
+      <div className="glass-panel rounded-2xl p-5 relative overflow-hidden group border border-dashed border-slate-300 dark:border-slate-700 bg-white/40 dark:bg-slate-900/30 backdrop-blur-md flex flex-col justify-center items-center text-center min-h-[175px]">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">{title}</span>
+        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs font-medium leading-relaxed">
+          No live {type === 'reel' ? 'Reels' : 'Carousel posts'} extracted yet. Scrape any Instagram {type === 'reel' ? 'Reel' : 'Carousel'} URL to highlight metrics here!
+        </p>
+      </div>
+    );
+  }
 
   const views = Number(post.views) || Number(post.reach) || 0;
   const likes = Number(post.likes) || 0;
