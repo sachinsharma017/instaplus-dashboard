@@ -130,8 +130,9 @@ export async function fetchLiveInstagramData(url, userRapidKey = '', isFastBatch
             let maxId = '';
             let found = false;
             let pageNum = 1;
+            let maxPages = isFastBatch ? 1 : 8;
             
-            while (pageNum <= 8) {
+            while (pageNum <= maxPages) {
               let reelsUrl = `https://instagram-public-bulk-scraper.p.rapidapi.com/v1/user_reels?username_or_id=${username}`;
               if (maxId) {
                 reelsUrl += `&max_id=${encodeURIComponent(maxId)}`;
